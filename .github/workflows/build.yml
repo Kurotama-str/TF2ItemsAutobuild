@@ -27,6 +27,8 @@ jobs:
           sudo apt-get install -y gcc-multilib g++-multilib
 
       - name: Fetch AMBuild 1 and SDKs
+        # Directory and variable names (mmsource-1.9, sourcemod-1.4, MMSOURCE19, SOURCEMOD14)
+        # are hardcoded in AMBuildScript; the contents are the branches set in env above.
         run: |
           deps="${RUNNER_TEMP}/deps"
           mkdir -p "${deps}"
@@ -40,6 +42,7 @@ jobs:
             echo "MMSOURCE19=${deps}/mmsource-1.9"
             echo "SOURCEMOD14=${deps}/sourcemod-1.4"
             echo "HL2SDKOBVALVE=${deps}/hl2sdk-ob-valve"
+            echo "CPLUS_INCLUDE_PATH=${deps}/sourcemod-1.4/public/amtl:${deps}/sourcemod-1.4/public/amtl/amtl"
           } >> "${GITHUB_ENV}"
 
       - name: Add hg shim for buildbot/Versioning
