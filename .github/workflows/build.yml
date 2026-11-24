@@ -37,6 +37,7 @@ jobs:
           git clone --depth 1 --branch "${SOURCEMOD_BRANCH}" --recurse-submodules --shallow-submodules https://github.com/alliedmodders/sourcemod "${deps}/sourcemod-1.4"
           ln -s ../sourcepawn/include "${deps}/sourcemod-1.4/public/sourcepawn"
           git clone --depth 1 --branch "${HL2SDK_BRANCH}" https://github.com/alliedmodders/hl2sdk "${deps}/hl2sdk-ob-valve"
+          ln -s public/linux "${deps}/hl2sdk-ob-valve/lib/linux"
           {
             echo "PYTHONPATH=${deps}/ambuild"
             echo "MMSOURCE19=${deps}/mmsource-1.9"
