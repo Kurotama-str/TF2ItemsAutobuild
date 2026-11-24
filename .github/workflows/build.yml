@@ -1,0 +1,89 @@
+name: Build Linux
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  AMBUILD_REF: "1.0"
+  MMSOURCE_BRANCH: "1.12-dev"
+  SOURCEMOD_BRANCH: "1.12-dev"
+  HL2SDK_BRANCH: "tf2"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install 32-bit toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib
+
+      - name: Fetch AMBuild 1 and SDKs
+        run: |
+          deps="${RUNNER_TEMP}/deps"
+          mkdir -p "${deps}"
+          git clone --depth 1 --branch "${AMBUILD_REF}" https://github.com/alliedmodders/ambuild "${deps}/ambuild"
+          git clone --depth 1 --branch "${MMSOURCE_BRANCH}" https://github.com/alliedmodders/metamod-source "${deps}/mmsource-1.9"
+          git clone --depth 1 --branch "${SOURCEMOD_BRANCH}" https://github.com/alliedmodders/sourcemod "${deps}/sourcemod-1.4"
+          git clone --depth 1 --branch "${HL2SDK_BRANCH}" https://github.com/alliedmodders/hl2sdk "${deps}/hl2sdk-ob-valve"
+          {
+            echo "PYTHONPATH=${deps}/ambuild"
+            echo "MMSOURCE19=${deps}/mmsource-1.9"
+            echo "SOURCEMOD14=${deps}/sourcemod-1.4"
+            echo "HL2SDKOBVALVE=${deps}/hl2sdk-ob-valve"
+          } >> "${GITHUB_ENV}"
+
+      - name: Add hg shim for buildbot/Versioning
+        run: |
+          shim="${RUNNER_TEMP}/shim"
+          mkdir -p "${shim}"
+          count="$(git rev-list --count HEAD)"
+          sha="$(git rev-parse --short=12 HEAD)"
+          printf '#!/bin/sh\necho "changeset:   %s:%s"\n' "${count}" "${sha}" > "${shim}/hg"
+          chmod +x "${shim}/hg"
+          echo "${shim}" >> "${GITHUB_PATH}"
+
+      - name: Configure
+        run: |
+          mkdir build
+          cd build
+          python3 ../configure.py --enable-optimize
+
+      - name: Build
+        working-directory: build
+        run: python3 build.py
+
+      - name: Verify libstdc++ is linked
+        run: |
+          so="build/package/addons/sourcemod/extensions/tf2items.ext.2.ep2v.so"
+          file "${so}"
+          readelf -d "${so}" | grep NEEDED
+          readelf -d "${so}" | grep -q 'libstdc++.so.6'
+
+      - name: Create archive
+        run: |
+          pkg="${RUNNER_TEMP}/pkg"
+          src="build/package/addons/sourcemod"
+          mkdir -p "${pkg}/addons/sourcemod/extensions" "${pkg}/addons/sourcemod/gamedata"
+          cp "${src}/extensions/tf2items.ext.2.ep2v.so" "${src}/extensions/tf2items.autoload" "${pkg}/addons/sourcemod/extensions/"
+          cp "${src}/gamedata/tf2.items.txt" "${pkg}/addons/sourcemod/gamedata/"
+          version="$(cat product.version)"
+          name="tf2items-${version}-$(git rev-parse --short=8 HEAD)-linux"
+          tar --owner=0 --group=0 -C "${pkg}" -czf "${name}.tar.gz" addons
+          tar -tzvf "${name}.tar.gz"
+          echo "ARCHIVE=${name}.tar.gz" >> "${GITHUB_ENV}"
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf2items-linux
+          path: ${{ env.ARCHIVE }}
+          if-no-files-found: error
