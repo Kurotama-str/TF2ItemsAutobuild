@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  AMBUILD_REF: "1.0"
+  AMBUILD_REF: "2.2"
   MMSOURCE_BRANCH: "1.12-dev"
   SOURCEMOD_BRANCH: "1.12-dev"
   HL2SDK_BRANCH: "tf2"
