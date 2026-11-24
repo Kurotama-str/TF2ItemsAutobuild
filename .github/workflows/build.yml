@@ -55,6 +55,13 @@ jobs:
           chmod +x "${shim}/hg"
           echo "${shim}" >> "${GITHUB_PATH}"
 
+      - name: Patch AMBuildScript for the 1.12-era SDKs
+        # SourceMod 1.12 headers need C++17, and the current hl2sdk needs LINUX defined.
+        run: |
+          sed -i "s/'-std=c++11'/'-std=c++17'/" AMBuildScript
+          sed -i "s/^\(\s*\)self.compiler.AddToListVar('CDEFINES', '_LINUX')/&\n\1self.compiler.AddToListVar('CDEFINES', 'LINUX')/" AMBuildScript
+          git diff AMBuildScript
+
       - name: Configure
         run: |
           mkdir build
